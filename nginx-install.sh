@@ -19,7 +19,6 @@ if [ "$EUID" -ne 0 ]; then
     exit
 fi
 
-
 # Create LOGS directory if  not exist
 if [ ! -d "/var/log/nginx_install" ]; then
     echo "LOGS directory does not exist. Creating LOGS directory..."
@@ -37,7 +36,7 @@ function install_nginx(){
       sudo apt update && apt install nginx -y
       echo "Nginx installed!"
   fi
-}
+} 2>&1 | tee -a "$LOGFILE" 
 
 ######################################################################
 ### create a new virtual host
@@ -106,29 +105,14 @@ EOF
 
     echo "New virtual host created!"
     echo "You can access your website at http://$vhost_name"
-}
+
+} 2>&1 | tee -a "$LOGFILE" 
 
 # Call function to install nginx
 install_nginx
 
 ### call function to create virtual host
 create_virtual_host
-
-# ln -s /etc/nginx/sites-available/$vhost_name /etc/nginx/sites-enabled/
-# sudo systemctl restart nginx
-# echo "New virtual host created!"
-# echo "You can access your website at http://$vhost_name"
-
-
-# # Call func for install nginx 
-# # install_nginx
-# # create_virtual_host
-
-
-
-
-# # ln -s /etc/nginx/sites-available/$vhost_name /etc/nginx/sites-enabled/
-# # systemctl restart nginx
 
 
 
