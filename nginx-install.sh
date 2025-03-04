@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
+
 #######################################################################
+  _   _  _____ _____ _   ___   __  _______ ____   ____  _      
+# | \ | |/ ____|_   _| \ | \ \ / / |__   __/ __ \ / __ \| |     
+# |  \| | |  __  | | |  \| |\ V /     | | | |  | | |  | | |     
+# | . ` | | |_ | | | | . ` | > <      | | | |  | | |  | | |     
+# | |\  | |__| |_| |_| |\  |/ . \     | | | |__| | |__| | |____ 
+# |_| \_|\_____|_____|_| \_/_/ \_\    |_|  \____/ \____/|______|
+
+#######################################################################     
+
 #Developed by : Dmitri Donskoy
 #Purpose : Install and configure nginx server
 #Date : 00.02.2025
@@ -9,6 +19,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 #######################################################################
+
+
 
 # # Get the home directory of the current user who run sudo .
 
@@ -49,7 +61,7 @@ function remove_nginx(){
 
 
 ######################################################################
-### create a new virtual host
+### create a new virtual host with basic params
 function create_virtual_host(){
     echo "Enter the domain name for the new virtual host : "
     read vhost_name
@@ -72,7 +84,7 @@ function create_virtual_host(){
     <H1>Welcome to $vhost_name</H1> 
 EOF
 
-    ### create a new virtual host
+    ### create a new virtual host from template
     cat > /etc/nginx/sites-available/$vhost_name <<EOF
     server {
         listen 80;
@@ -89,23 +101,18 @@ EOF
     }
 EOF
 
-######################################################################
-    ### create a symbolic link
+    ### remove default virtual host from sites-enabled if present
     if [ -e /etc/nginx/sites-enabled/default ]; then
         sudo rm /etc/nginx/sites-enabled/default
     fi
 
+    ### check if virtual host already exists , if exist then exit
     if [ -e /etc/nginx/sites-enabled/$vhost_name ]; then
         echo "Virtual host already exists. Exiting..."
         exit 1
     fi
 
-    ln -s /etc/nginx/sites-available/$vhost_name /etc/nginx/sites-enabled/
-    systemctl restart nginx
-
-    echo "New virtual host created!"
-    echo "You can access your website at http://$vhost_name"
-
+    ### Create link to the site directory and set permissions
     ln -s /etc/nginx/sites-available/$vhost_name /etc/nginx/sites-enabled/
     chown -R $USER:$USER /etc/nginx/sites-available/$vhost_name
     chmod -R 755 /etc/nginx/sites-available/$vhost_name
@@ -113,23 +120,55 @@ EOF
     ### restart nginx
     systemctl restart nginx
 
-    echo "New virtual host created!"
+    echo "Virtual host created!"
     echo "You can access your website at http://$vhost_name"
 
 }
 
 
-################### FUNCTIONS CALLS #############################
-
-# Call function to install nginx
-install_nginx
-
-# Call function to remove nginx
-# remove_nginx
-
-## call function to create virtual host
-create_virtual_host
+########################################### OPTIONS ################################################
 
 
+# Options to run the script
+if [ $# -eq 0 ]; then
+    echo "Please choose one of this options. Usage: $0 {install-nginx|setup-virtual-host|enable-user-dir|setup-auth|setup-auth-pam|enable-cgi|remove nginx}"
+    exit 1
+fi
 
 
+case "$1" in
+    --install)
+        install_nginx
+        ;;
+    setup-virtual-host)
+        create_virtual_host
+        ;;
+    # enable-user-dir)
+    #     enable_user_dir
+    #     ;;
+    # setup-auth)
+    #     setup_auth
+    #     ;;
+    # setup-auth-pam)
+    #     setup_auth_pam
+    #     ;;
+    # enable-cgi)
+    #     enable_cgi
+    #     ;;
+    --remove)
+        remove_nginx
+        ;;
+
+    *)
+        echo "Usage: $0 {install-nginx|setup-virtual-host|enable-user-dir|setup-auth|setup-auth-pam|enable-cgi|remove-nginx}"
+        exit 1
+        ;;
+esac
+
+# ./setup_nginx.sh install-nginx         # Install Nginx
+# ./setup_nginx.sh remove-nginx          # Uninstall Nginx
+# ./setup_nginx.sh create-virtual-host   # Configure a virtual host
+# ./setup_nginx.sh enable-user-dir       # Enable user directories
+# ./setup_nginx.sh setup-auth            # Enable authentication (htpasswd)
+# ./setup_nginx.sh setup-auth-pam        # Enable PAM authentication
+# ./setup_nginx.sh enable-cgi            # Enable CGI scripting
