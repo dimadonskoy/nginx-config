@@ -11,7 +11,6 @@ set -o pipefail
 #######################################################################
 
 # # Get the home directory of the current user who run sudo .
-# USER_HOME=$(eval echo ~$SUDO_USER)  
 
 # Check if user is root
 if [ "$EUID" -ne 0 ]; then
@@ -36,7 +35,18 @@ function install_nginx(){
       sudo apt update && apt install nginx -y
       echo "Nginx installed!"
   fi
-} 2>&1 | tee -a "$LOGFILE" 
+} 
+
+# Remove nginx service
+function remove_nginx(){
+  if [ -x "$(command -v nginx)" ]; then
+      echo "Nginx installed. Uninstalling nginx service..."
+      sudo apt remove nginx --purge -y
+      echo "Nginx uninstalled!"
+  fi
+} 
+
+
 
 ######################################################################
 ### create a new virtual host
@@ -96,9 +106,9 @@ EOF
     echo "New virtual host created!"
     echo "You can access your website at http://$vhost_name"
 
-    ln -s /etc/nginx/sites-available/$vhost_name.conf /etc/nginx/sites-enabled/
+    ln -s /etc/nginx/sites-available/$vhost_name /etc/nginx/sites-enabled/
     chown -R $USER:$USER /etc/nginx/sites-available/$vhost_name
-    chmod -R 755 /etc/nginx/sites-available/$vhost_name.conf
+    chmod -R 755 /etc/nginx/sites-available/$vhost_name
 
     ### restart nginx
     systemctl restart nginx
@@ -106,12 +116,18 @@ EOF
     echo "New virtual host created!"
     echo "You can access your website at http://$vhost_name"
 
-} 2>&1 | tee -a "$LOGFILE" 
+}
+
+
+################### FUNCTIONS CALLS #############################
 
 # Call function to install nginx
 install_nginx
 
-### call function to create virtual host
+# Call function to remove nginx
+# remove_nginx
+
+## call function to create virtual host
 create_virtual_host
 
 
