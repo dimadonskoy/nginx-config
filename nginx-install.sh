@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #######################################################################
-  _   _  _____ _____ _   ___   __  _______ ____   ____  _      
+#  _   _  _____ _____ _   ___   __  _______ ____   ____  _      
 # | \ | |/ ____|_   _| \ | \ \ / / |__   __/ __ \ / __ \| |     
 # |  \| | |  __  | | |  \| |\ V /     | | | |  | | |  | | |     
 # | . ` | | |_ | | | | . ` | > <      | | | |  | | |  | | |     
@@ -183,6 +183,36 @@ EOF
 
 }
 
+
+function basic_auth() {
+    # Ensure apache2-utils is installed
+    if ! [ -x "$(command -v htpasswd)" ]; then
+        echo "Installing apache2-utils..."
+        sudo apt update && sudo apt install apache2-utils -y
+    fi
+
+    echo "Enter the domain name for the virtual host to enable basic auth : "
+    read vhost_name
+
+    ## create a password file
+    echo "Enter the username :"
+    read username
+    htpasswd -c /etc/nginx/.htpasswd $username
+
+    sudo sed -i '13i\
+        location /secure {\n\
+            auth_basic "Restricted Area";\n\
+            auth_basic_user_file /etc/nginx/.htpasswd;\n\
+          }' /etc/nginx/sites-available/$vhost_name
+
+    ### restart nginx
+    systemctl restart nginx
+    
+    echo "Basic authentication enabled !"
+    echo "You can access your secure website at http://$vhost_name/secure"
+
+  }
+
 ########################################### OPTIONS ################################################
 
 
@@ -203,9 +233,9 @@ case "$1" in
     --enable-user-dir)
         enable_user_dir
         ;;
-    # setup-auth)
-    #     setup_auth
-    #     ;;
+    --enable-basic-auth)
+        basic_auth
+        ;;
     # setup-auth-pam)
     #     setup_auth_pam
     #     ;;
@@ -221,11 +251,3 @@ case "$1" in
         exit 1
         ;;
 esac
-
-# ./setup_nginx.sh install-nginx         # Install Nginx
-# ./setup_nginx.sh remove-nginx          # Uninstall Nginx
-# ./setup_nginx.sh create-virtual-host   # Configure a virtual host
-# ./setup_nginx.sh enable-user-dir       # Enable user directories
-# ./setup_nginx.sh setup-auth            # Enable authentication (htpasswd)
-# ./setup_nginx.sh setup-auth-pam        # Enable PAM authentication
-# ./setup_nginx.sh enable-cgi            # Enable CGI scripting
