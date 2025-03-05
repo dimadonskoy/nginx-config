@@ -101,7 +101,7 @@ EOF
     }
 EOF
 
-    ### remove default virtual host from sites-enabled if present
+    ### remove default virtual host from sites-enabled if exists
     if [ -e /etc/nginx/sites-enabled/default ]; then
         sudo rm /etc/nginx/sites-enabled/default
     fi
@@ -126,6 +126,17 @@ EOF
 }
 
 
+function enable_user_dir(){
+
+chmod 711 /home/$USER
+chmod 755 /home/$USER/public_html
+chmod 644 /home/$USER/public_html/index.html
+
+
+
+}
+
+
 ########################################### OPTIONS ################################################
 
 
@@ -143,9 +154,9 @@ case "$1" in
     setup-virtual-host)
         create_virtual_host
         ;;
-    # enable-user-dir)
-    #     enable_user_dir
-    #     ;;
+    enable-user-dir)
+        enable_user_dir
+        ;;
     # setup-auth)
     #     setup_auth
     #     ;;
