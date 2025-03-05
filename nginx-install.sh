@@ -71,14 +71,11 @@ function create_virtual_host(){
     echo "Enter the domain name for the new virtual host : "
     read vhost_name
 
-    ### function to check if virtual host already exists
-    function check_vhost_exists(){
-        if [ -e /etc/nginx/sites-enabled/$vhost_name ]; then
-            echo "Virtual host already exists. Exiting..."
-            exit 1
-        fi
-    }
-    check_vhost_exists
+    ### check if virtual host already exists
+    if [ -e /etc/nginx/sites-enabled/$vhost_name ]; then
+        echo "Virtual host already exists. Exiting..."
+        exit 1
+    fi
 
     echo "Creating new virtual host...".
 
@@ -144,9 +141,6 @@ function enable_user_dir() {
         exit 1
     fi
 
-
-   echo "Creating new virtual host...".
-
     ### create site-directory
     mkdir -p /var/www/$vhost_name
     sudo chown -R $USER:$USER /var/www/$vhost_name
@@ -174,8 +168,6 @@ EOF
     }
 EOF
 
-    check_vhost_exists
-
     ### Create link to the site directory and set permissions
     rm -rf /etc/nginx/sites-enabled/* ## remove all enabled sites
     
@@ -190,32 +182,6 @@ EOF
     echo "You can access your website at http://$vhost_name/~$USERNAME"
 
 }
-
-#     ## create folder public_html in user home directory
-#     mkdir -p $USER_HOME_DIR/public_html
-#     chown -R $USERNAME:$USERNAME $USER_HOME_DIR/public_html
-#     # chmod 711 /home/$USER
-#     chmod 755 $USER_HOME_DIR/public_html
-
-
-#     ## create sample index.html
-#     cat > $USER_HOME_DIR/public_html/index.html <<EOF
-#     <H1>Welcome to $USERNAME's website</H1>
-# EOF
-#     chmod 644 $USER_HOME_DIR/public_html/index.html
-
-
-
-    # ### Create link to the site directory and set permissions
-    # ln -s /etc/nginx/sites-available/$vhost_name /etc/nginx/sites-enabled/
-    # chown -R $USERNAME:$USERNAME /etc/nginx/sites-available/$vhost_name
-    # chmod -R 755 /etc/nginx/sites-available/$vhost_name
-    
-    # ## restart nginx
-    # systemctl restart nginx
-
-    # echo "User directory enabled!"
-    # echo "You can access your website at http://$vhost_name/~$USER"
 
 ########################################### OPTIONS ################################################
 
