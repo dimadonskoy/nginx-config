@@ -18,11 +18,16 @@
 set -o errexit
 set -o nounset
 set -o pipefail
+
+
+############################ VARS ######################################
+# Get the home directory of the current user who run sudo .
+USER_HOME_DIR=$(eval echo ~$SUDO_USER)  
+# Get the username of the current user who run sudo .
+USERNAME=$(basename $USER_HOME_DIR)
+
+LOGFILE=/var/log/nginx_install/nginx_install.log
 #######################################################################
-
-
-
-# # Get the home directory of the current user who run sudo .
 
 # Check if user is root
 if [ "$EUID" -ne 0 ]; then
@@ -36,7 +41,7 @@ if [ ! -d "/var/log/nginx_install" ]; then
     mkdir -p /var/log/nginx_install
 fi
 
-LOGFILE=/var/log/nginx_install/nginx_install.log
+
 
 # Install nginx service
 function install_nginx(){
@@ -66,11 +71,14 @@ function create_virtual_host(){
     echo "Enter the domain name for the new virtual host : "
     read vhost_name
 
-    ### CHECK IF Virtual host already exists
-    if [ -e /etc/nginx/sites-available/$vhost_name ]; then
-        echo "Virtual host already exists. Exiting..."
-        exit 1
-    fi
+    ### function to check if virtual host already exists
+    function check_vhost_exists(){
+        if [ -e /etc/nginx/sites-enabled/$vhost_name ]; then
+            echo "Virtual host already exists. Exiting..."
+            exit 1
+        fi
+    }
+    check_vhost_exists
 
     echo "Creating new virtual host...".
 
@@ -126,16 +134,88 @@ EOF
 }
 
 
-function enable_user_dir(){
+function enable_user_dir() {
+    echo "Enter the domain name for the virtual host to enable user directory: "
+    read vhost_name
 
-chmod 711 /home/$USER
-chmod 755 /home/$USER/public_html
-chmod 644 /home/$USER/public_html/index.html
+    ### check if virtual host already exists , if exist then exit
+    if [ -e /etc/nginx/sites-enabled/$vhost_name ]; then
+        echo "Virtual host already exists. Exiting..."
+        exit 1
+    fi
 
 
+   echo "Creating new virtual host...".
+
+    ### create site-directory
+    mkdir -p /var/www/$vhost_name
+    sudo chown -R $USER:$USER /var/www/$vhost_name
+    sudo chmod -R 755 /var/www/$vhost_name
+
+    ### create sample index.html
+    cat > /var/www/$vhost_name/index.html <<EOF
+    <H1>Welcome to $vhost_name</H1> 
+EOF
+
+    cat > /etc/nginx/sites-available/"$vhost_name" <<EOF
+    server {
+        listen 80;
+        listen [::]:80;
+
+        root /var/www/$vhost_name;
+        index index.html index.htm index.nginx-debian.html;
+
+        server_name $vhost_name www.$vhost_name;
+
+        location ~ ^/~(.+?)(/.*)?$ {
+            alias /home/\$1/public_html/\$2;
+            index index.html index.htm;
+        }
+    }
+EOF
+
+    check_vhost_exists
+
+    ### Create link to the site directory and set permissions
+    rm -rf /etc/nginx/sites-enabled/* ## remove all enabled sites
+    
+    ln -s /etc/nginx/sites-available/$vhost_name /etc/nginx/sites-enabled/
+    chown -R $USERNAME:$USERNAME /etc/nginx/sites-available/$vhost_name
+    chmod -R 755 /etc/nginx/sites-available/$vhost_name
+
+    ### restart nginx
+    systemctl restart nginx
+
+    echo "Virtual host created!"
+    echo "You can access your website at http://$vhost_name/~$USERNAME"
 
 }
 
+#     ## create folder public_html in user home directory
+#     mkdir -p $USER_HOME_DIR/public_html
+#     chown -R $USERNAME:$USERNAME $USER_HOME_DIR/public_html
+#     # chmod 711 /home/$USER
+#     chmod 755 $USER_HOME_DIR/public_html
+
+
+#     ## create sample index.html
+#     cat > $USER_HOME_DIR/public_html/index.html <<EOF
+#     <H1>Welcome to $USERNAME's website</H1>
+# EOF
+#     chmod 644 $USER_HOME_DIR/public_html/index.html
+
+
+
+    # ### Create link to the site directory and set permissions
+    # ln -s /etc/nginx/sites-available/$vhost_name /etc/nginx/sites-enabled/
+    # chown -R $USERNAME:$USERNAME /etc/nginx/sites-available/$vhost_name
+    # chmod -R 755 /etc/nginx/sites-available/$vhost_name
+    
+    # ## restart nginx
+    # systemctl restart nginx
+
+    # echo "User directory enabled!"
+    # echo "You can access your website at http://$vhost_name/~$USER"
 
 ########################################### OPTIONS ################################################
 
@@ -151,10 +231,10 @@ case "$1" in
     --install)
         install_nginx
         ;;
-    setup-virtual-host)
+    --create-virtual-host)
         create_virtual_host
         ;;
-    enable-user-dir)
+    --enable-user-dir)
         enable_user_dir
         ;;
     # setup-auth)
