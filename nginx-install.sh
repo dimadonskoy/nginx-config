@@ -74,8 +74,7 @@ function remove_nginx(){
 ######################################################################
 ### create a new virtual host with basic params
 function create_virtual_host(){
-    echo "Enter the domain name for the new virtual host : "
-    read domain_name
+    read -p "Enter the domain name for the new virtual host : " domain_name
 
     ### check if virtual host already exists
     if [ -e /etc/nginx/sites-enabled/$domain_name ]; then
@@ -146,8 +145,7 @@ EOF
 
 ##################  USER DIRECTORY  ####################################
 function enable_user_dir() {
-    echo "Enter the domain name for the virtual host to enable user directory: "
-    read domain_name
+    read -p "Enter the domain name for the virtual host to enable user directory : " domain_name
 
     if [ ! -e "/etc/nginx/sites-enabled/$domain_name" ]; then
         echo "Virtual host does not exist. Please create a virtual host first."
@@ -186,16 +184,18 @@ EOF
 }
 
 
+##################  BASIC AUTHENTICATION  ####################################
+function enable_basic_auth() {
+    echo "Setting up basic authentication..."
+    sudo apt install -y apache2-utils nginx-extras
 
-function basic_auth() {
-    # Ensure apache2-utils is installed
-    if ! [ -x "$(command -v htpasswd)" ]; then
-        echo "Installing nginx extensions ..."
-        sudo apt update && sudo apt install apache2-utils nginx-extras -y
+    read -p "Enter the domain name for the virtual host to enable basic auth : " domain_name
+
+    ### check if virtual host already exists
+    if [ ! -e "/etc/nginx/sites-enabled/$domain_name" ]; then
+        echo "Virtual host does not exist. Please create a virtual host first."
+        exit 1    
     fi
-
-    echo "Enter the domain name for the virtual host to enable basic auth : "
-    read domain_name
 
     ## create a password file
     echo "Enter the username :"
@@ -215,14 +215,70 @@ function basic_auth() {
     echo "Basic authentication enabled !"
     echo "You can access your secure website at http://$domain_name/secure"
 
+    ### Test with curl
+    echo "Testing the virtual host with curl..."
+    read -p "Enter the username : " auth_user
+    read -p "Enter the password : " auth_pass
+    curl -u auth_user:auth_pass http://$domain_name/secure/
+
   }
+
+##################  PAM AUTHENTICATION  ####################################
+function enable_auth_pam() {
+    echo "Setting up PAM authentication..."
+    sudo apt install -y libpam0g-dev libpam-modules
+
+    ### add pam auth to the virtual host
+    sudo sed -i '13i\
+        location /auth-pam {\n\
+            auth_pam "PAM Authentication";\n\
+            auth_pam_service_name "nginx";\n\
+          }' /etc/nginx/sites-available/$domain_name
+
+
+    # Define the PAM configuration file for nginx
+    PAM_FILE="/etc/pam.d/nginx"
+    NGINX_GROUP="www-data"
+    HTML_DIR="/var/www/html/$domain_name"
+    HTML_FILE="$HTML_DIR/index.html"
+
+    # Append PAM configuration to nginx PAM file
+    if ! grep -q "auth include common-auth" "$PAM_FILE"; then
+        echo -e "auth include common-auth\naccount include common-account" | sudo tee -a "$PAM_FILE"
+    fi
+
+    # Add nginx user to shadow group
+    sudo usermod -aG shadow "$NGINX_GROUP"
+
+    # Reload nginx service
+    sudo systemctl reload nginx
+
+    # Create test directory and index.html file
+    sudo mkdir -p "$HTML_DIR"
+    echo "<html>
+    <body>
+    <div style='width: 100%; font-size: 40px; font-weight: bold; text-align: center;'>
+    Test Page for PAM Auth
+    </div>
+    </body>
+    </html>" | sudo tee "$HTML_FILE"
+
+    # Set permissions for the web directory
+    sudo chown -R www-data:www-data "$HTML_DIR"
+    sudo chmod -R 755 "$HTML_DIR"
+
+    sudo ln -s /etc/nginx/sites-available/auth_pam /etc/nginx/sites-enabled/
+    sudo systemctl restart nginx
+    echo "PAM authentication enabled."
+}   
+
 
 ########################################### OPTIONS ################################################
 
 
 # Options to run the script
 if [ $# -eq 0 ]; then
-    echo "Please choose one of this options. Usage: $0 {install-nginx|setup-virtual-host|enable-user-dir|setup-auth|setup-auth-pam|enable-cgi|remove nginx}"
+    echo "Please choose one of this options: $0 {--install-nginx | --create-virtual-host | --enable-user-dir | --setup-basic-auth | --setup-auth-pam | --remove-nginx}"
     exit 1
 fi
 
@@ -238,20 +294,17 @@ case "$1" in
         enable_user_dir
         ;;
     --enable-basic-auth)
-        basic_auth
+        enable_basic_auth
         ;;
-    # setup-auth-pam)
-    #     setup_auth_pam
-    #     ;;
-    # enable-cgi)
-    #     enable_cgi
-    #     ;;
+    --enable-auth-pam)
+        enable_auth_pam
+        ;;
     --remove)
         remove_nginx
         ;;
 
     *)
-        echo "Usage: $0 {install-nginx|setup-virtual-host|enable-user-dir|setup-auth|setup-auth-pam|enable-cgi|remove-nginx}"
+        echo "Usage: $0 {install-nginx | create-virtual-host | enable-user-dir | setup-basic-auth | setup-auth-pam | remove-nginx}"
         exit 1
         ;;
 esac
