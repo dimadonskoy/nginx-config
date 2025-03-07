@@ -20,12 +20,12 @@ set -o nounset
 set -o pipefail
 
 
-############################ VARS ######################################
+############################ GLOBAL VARS ##############################
 # Get the home directory of the current user who run sudo .
 USER_HOME_DIR=$(eval echo ~$SUDO_USER)  
 # Get the username of the current user who run sudo .
 USERNAME=$(basename $USER_HOME_DIR)
-
+## Log file
 LOGFILE=/var/log/nginx_install/nginx_install.log
 #######################################################################
 
@@ -59,6 +59,12 @@ function remove_nginx(){
   if [ -x "$(command -v nginx)" ]; then
       echo "Nginx installed. Uninstalling nginx service..."
       sudo apt remove nginx --purge -y
+      rm -rf /etc/nginx/sites-available/*
+      rm -rf /etc/nginx/sites-enabled/*
+      rm -rf /var/www/*
+      rm -rf /etc/nginx/.htpasswd
+      rm -rf /var/log/nginx_install
+      rm -rf $USER_HOME_DIR/public_html/index.html
       echo "Nginx uninstalled!"
   fi
 } 
@@ -69,10 +75,10 @@ function remove_nginx(){
 ### create a new virtual host with basic params
 function create_virtual_host(){
     echo "Enter the domain name for the new virtual host : "
-    read vhost_name
+    read domain_name
 
     ### check if virtual host already exists
-    if [ -e /etc/nginx/sites-enabled/$vhost_name ]; then
+    if [ -e /etc/nginx/sites-enabled/$domain_name ]; then
         echo "Virtual host already exists. Exiting..."
         exit 1
     fi
@@ -80,25 +86,25 @@ function create_virtual_host(){
     echo "Creating new virtual host...".
 
     ### create site-directory
-    mkdir -p /var/www/$vhost_name
-    sudo chown -R $USER:$USER /var/www/$vhost_name
-    sudo chmod -R 755 /var/www/$vhost_name
+    mkdir -p /var/www/$domain_name
+    sudo chown -R $USER:$USER /var/www/$domain_name
+    sudo chmod -R 755 /var/www/$domain_name
 
     ### create sample index.html
-    cat > /var/www/$vhost_name/index.html <<EOF
-    <H1>Welcome to $vhost_name</H1> 
+    cat > /var/www/$domain_name/index.html <<EOF
+    <H1>Welcome to nginx new virtual host</H1> 
 EOF
 
     ### create a new virtual host from template
-    cat > /etc/nginx/sites-available/$vhost_name <<EOF
+    cat > /etc/nginx/sites-available/$domain_name <<EOF
     server {
         listen 80;
         listen [::]:80;
 
-        root /var/www/$vhost_name;
+        root /var/www/$domain_name;
         index index.html index.htm index.nginx-debian.html;
 
-        server_name $vhost_name www.$vhost_name;
+        server_name $domain_name www.$domain_name;
 
         location / {
             try_files \$uri \$uri/ =404;
@@ -112,104 +118,102 @@ EOF
     fi
 
     ### check if virtual host already exists , if exist then exit
-    if [ -e /etc/nginx/sites-enabled/$vhost_name ]; then
+    if [ -e /etc/nginx/sites-enabled/$domain_name ]; then
         echo "Virtual host already exists. Exiting..."
         exit 1
     fi
 
     ### Create link to the site directory and set permissions
-    ln -s /etc/nginx/sites-available/$vhost_name /etc/nginx/sites-enabled/
-    chown -R $USER:$USER /etc/nginx/sites-available/$vhost_name
-    chmod -R 755 /etc/nginx/sites-available/$vhost_name
+    ln -s /etc/nginx/sites-available/$domain_name /etc/nginx/sites-enabled/
+    chown -R $USER:$USER /etc/nginx/sites-available/$domain_name
+    chmod -R 755 /etc/nginx/sites-available/$domain_name
+
+
+    ### Add new virtual host to /etc/hosts
+    echo "127.0.0.1 $domain_name" >> /etc/hosts
 
     ### restart nginx
     systemctl restart nginx
 
     echo "Virtual host created!"
-    echo "You can access your website at http://$vhost_name"
+    echo "You can access your website at http://$domain_name"
+
+    ### Test with curl
+    echo "Testing the virtual host with curl..."
+    curl  http://$domain_name
 
 }
 
-
+##################  USER DIRECTORY  ####################################
 function enable_user_dir() {
     echo "Enter the domain name for the virtual host to enable user directory: "
-    read vhost_name
+    read domain_name
 
-    ### check if virtual host already exists , if exist then exit
-    if [ -e /etc/nginx/sites-enabled/$vhost_name ]; then
-        echo "Virtual host already exists. Exiting..."
-        exit 1
+    if [ ! -e "/etc/nginx/sites-enabled/$domain_name" ]; then
+        echo "Virtual host does not exist. Please create a virtual host first."
+        exit 1    
     fi
 
-    ### create site-directory
-    mkdir -p /var/www/$vhost_name
-    sudo chown -R $USER:$USER /var/www/$vhost_name
-    sudo chmod -R 755 /var/www/$vhost_name
+    # Create user directory if it does not exist
+    mkdir -p "$USER_HOME_DIR/public_html"
 
-    ### create sample index.html
-    cat > /var/www/$vhost_name/index.html <<EOF
-    <H1>Welcome to $vhost_name</H1> 
+    # Create a sample index.html
+    cat > "$USER_HOME_DIR/public_html/index.html" <<EOF
+    <H1>Welcome to nginx user_dir test server !</H1> 
 EOF
+    ## Set permissions
+    sudo chown -R "$USERNAME:$USERNAME" "$USER_HOME_DIR/public_html"
+    sudo chmod 755 $USER_HOME_DIR/public_html
+    sudo chmod 644 $USER_HOME_DIR/public_html/index.html
 
-    cat > /etc/nginx/sites-available/"$vhost_name" <<EOF
-    server {
-        listen 80;
-        listen [::]:80;
 
-        root /var/www/$vhost_name;
-        index index.html index.htm index.nginx-debian.html;
+    # Add user_dir configuration to Nginx
+    sudo sed -i '13i\
+        location ~ ^/~(.+?)(/.*)?$ {\n\
+            alias /home/\$1/public_html/$2;\n\
+            index index.html index.htm;\n\
+        }' "/etc/nginx/sites-available/$domain_name"
 
-        server_name $vhost_name www.$vhost_name;
-
-        location ~ ^/~(.+?)(/.*)?$ {
-            alias /home/\$1/public_html/\$2;
-            index index.html index.htm;
-        }
-    }
-EOF
-
-    ### Create link to the site directory and set permissions
-    rm -rf /etc/nginx/sites-enabled/* ## remove all enabled sites
-    
-    ln -s /etc/nginx/sites-available/$vhost_name /etc/nginx/sites-enabled/
-    chown -R $USERNAME:$USERNAME /etc/nginx/sites-available/$vhost_name
-    chmod -R 755 /etc/nginx/sites-available/$vhost_name
-
-    ### restart nginx
+    # Restart Nginx
     systemctl restart nginx
 
-    echo "Virtual host created!"
-    echo "You can access your website at http://$vhost_name/~$USERNAME"
+    echo "Virtual host configured!"
+    echo "You can access your website at http://$domain_name/~$USERNAME"
 
+    ### Test with curl
+    echo "Testing the virtual host with curl..."
+    curl http://$domain_name/~$USERNAME/
 }
+
 
 
 function basic_auth() {
     # Ensure apache2-utils is installed
     if ! [ -x "$(command -v htpasswd)" ]; then
-        echo "Installing apache2-utils..."
-        sudo apt update && sudo apt install apache2-utils -y
+        echo "Installing nginx extensions ..."
+        sudo apt update && sudo apt install apache2-utils nginx-extras -y
     fi
 
     echo "Enter the domain name for the virtual host to enable basic auth : "
-    read vhost_name
+    read domain_name
 
     ## create a password file
     echo "Enter the username :"
     read username
     htpasswd -c /etc/nginx/.htpasswd $username
 
+    ### add basic auth to the virtual host
     sudo sed -i '13i\
         location /secure {\n\
             auth_basic "Restricted Area";\n\
             auth_basic_user_file /etc/nginx/.htpasswd;\n\
-          }' /etc/nginx/sites-available/$vhost_name
+          }' /etc/nginx/sites-available/$domain_name
 
     ### restart nginx
     systemctl restart nginx
     
     echo "Basic authentication enabled !"
-    echo "You can access your secure website at http://$vhost_name/secure"
+    echo "You can access your secure website at http://$domain_name/secure"
 
   }
 
