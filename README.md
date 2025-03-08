@@ -5,7 +5,7 @@
     <img src="https://raw.githubusercontent.com/marwin1991/profile-technology-icons/refs/heads/main/icons/bash.png" alt="Bash" width="70" height="70">
 </p>
 
-This is a Bash script to automate the setup, and configuration of Nginx . The script install/remove Nginx, create virtual hosts, enable user directories, and configure basic and PAM authentication.
+This is a Bash script to automate the setup, and configuration of Nginx . The script install/remove Nginx, create virtual hosts, enable user directories, CGI and configure basic and PAM authentication.
 
 ## Features
 
@@ -15,6 +15,7 @@ This is a Bash script to automate the setup, and configuration of Nginx . The sc
 - **Enable User Directory**: Configures the server to serve user-specific directories.
 - **Enable Basic Authentication**: Configures basic HTTP authentication for a virtual host.
 - **Enable PAM Authentication**: Configures PAM authentication for a virtual host.
+- **Enable CGI module**: Configures CGI module for a virtual host.
 
 ## Prerequisites
 
@@ -46,10 +47,11 @@ sudo ./nginx-config-tool.sh --[option]
 
 - `--install`: Installs Nginx.
 - `--remove`: Removes Nginx and its configurations.
-- `--create-virtual-host`: Creates a virtual host for the specified domain.
-- `--enable-user-dir`: Enables user directory for the specified username.
-- `--enable-basic-auth`: Enables basic authentication for the specified domain.
-- `--enable-pam-auth`: Enables PAM authentication for the specified domain.
+- `--vhost`: Creates a virtual host for the specified domain.
+- `--userdir`: Enables user directory for the specified username.
+- `--basic-auth`: Enables basic authentication for the specified domain.
+- `--pam-auth`: Enables PAM authentication for the specified domain.
+- `--cgi`: Enables CGI module to run scripts .
 
 ## Author
 

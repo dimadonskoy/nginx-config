@@ -50,8 +50,10 @@ function install_nginx(){
       echo "Nginx already installed. Skipping installation..." | tee -a $LOGFILE
   else
       echo "Installing nginx..." | tee -a $LOGFILE
-      sudo apt update && apt install nginx -y | tee -a $LOGFILE
+      apt update && apt install nginx -y | tee -a $LOGFILE
+      echo
       echo "Nginx installed!" | tee -a $LOGFILE
+      echo
   fi
 } 
 
@@ -98,7 +100,7 @@ EOF
 
     ### remove default virtual host from sites-enabled if exists
     if [ -e /etc/nginx/sites-enabled/default ]; then
-        sudo rm /etc/nginx/sites-enabled/default | tee -a $LOGFILE
+        rm /etc/nginx/sites-enabled/default | tee -a $LOGFILE
     fi
 
     ### check if virtual host already exists , if exist then exit
@@ -123,8 +125,10 @@ EOF
     echo "You can access your website at http://$domain_name" | tee -a $LOGFILE
 
     ### Test with curl
+    echo
     echo "Testing the virtual host with curl..." | tee -a $LOGFILE
     curl http://$domain_name | tee -a $LOGFILE
+    echo
 
 }
 
@@ -159,31 +163,17 @@ EOF
 
     # Restart Nginx
     systemctl restart nginx | tee -a $LOGFILE
-
+    echo
     echo "Virtual host configured!" | tee -a $LOGFILE
+    echo
     echo "You can access your website at http://$domain_name/~$USERNAME" | tee -a $LOGFILE
 
     ### Test with curl
+    echo
     echo "Testing the virtual host user_dir with curl..." | tee -a $LOGFILE
     curl http://$domain_name/~$USERNAME/ | tee -a $LOGFILE
+    echo
 }
-
-# Remove nginx service
-function remove_nginx(){
-  if [ -x "$(command -v nginx)" ]; then
-      echo "Nginx installed. Uninstalling nginx service..." | tee -a $LOGFILE
-      apt remove nginx --purge -y | tee -a $LOGFILE
-      rm -rf /etc/nginx/sites-available/* | tee -a $LOGFILE
-      rm -rf /etc/nginx/sites-enabled/* | tee -a $LOGFILE
-      rm -rf /var/www/* | tee -a $LOGFILE
-      rm -rf /etc/nginx/.htpasswd | tee -a $LOGFILE
-      rm -rf /etc/pam.d/nginx | tee -a $LOGFILE
-      rm -rf /etc/nginx/.htpasswd | tee -a $LOGFILE
-      rm -rf $USER_HOME_DIR/public_html/index.html | tee -a $LOGFILE
-      echo "Nginx uninstalled!" | tee -a $LOGFILE
-  fi
-} 
-
 
 ##############################  BASIC AUTHENTICATION  #############################################
 function enable_basic_auth() {
@@ -226,11 +216,12 @@ EOF
     echo "You can access your secure website at http://$domain_name/secure/" | tee -a $LOGFILE
 
     ### Test with curl
+    echo
     echo "Testing the virtual host with curl..." | tee -a $LOGFILE
     read -p "Enter the username : " auth_user
     read -p "Enter the password : " auth_pass
     curl -u $auth_user:$auth_pass http://$domain_name/secure/ | tee -a $LOGFILE
-
+    echo
   }
 
 ################################  PAM AUTHENTICATION  ##############################################
@@ -267,7 +258,7 @@ EOF
 
     # Append PAM configuration to nginx PAM file
     if ! grep -q "auth include common-auth" "$PAM_FILE"; then
-        echo -e "auth include common-auth\naccount include common-account" | sudo tee -a "$PAM_FILE" | tee -a $LOGFILE
+        echo -e "auth include common-auth\naccount include common-account" | tee -a "$PAM_FILE" | tee -a $LOGFILE
     fi
 
     # Add nginx user to shadow group
@@ -284,19 +275,98 @@ EOF
     echo "PAM authentication enabled." | tee -a $LOGFILE
 
     ### Test with curl
+    echo
     echo "Testing the virtual host with curl..." | tee -a $LOGFILE
     read -p "Enter the username : " auth_user
     read -p "Enter the password : " auth_pass
     curl -u $auth_user:$auth_pass http://$domain_name/auth-pam/ | tee -a $LOGFILE
+    echo
 }   
 
+function enable_cgi(){
+    echo "Setting up CGI..." | tee -a $LOGFILE
+    apt install -y fcgiwrap spawn-fcgi | tee -a $LOGFILE
 
+    read -p "Enter the domain name for the virtual host to enable CGI : " domain_name
+
+    ### check if virtual host already exists
+    if [ ! -e "/etc/nginx/sites-enabled/$domain_name" ]; then
+        echo "Virtual host does not exist. Please create a virtual host first." | tee -a $LOGFILE
+        exit 1    
+    fi
+
+    # Create cgi directory and index.html if it does not exist
+    mkdir -p "/var/www/$domain_name/cgi" | tee -a $LOGFILE
+
+    # Create a sample cgi script
+    cat > "/var/www/$domain_name/cgi/cgi_script.sh" <<EOF
+    #!/usr/bin/env bash
+    echo "Content-type: text/html"
+    echo ""
+    echo "<html>"
+    echo "<head><title>CGI Script</title></head>"
+    echo "<body>"
+    echo "<h1>Welcome to nginx CGI $domain_name server!</h1>"
+    echo "</body>"
+    echo "</html>"
+EOF
+    # Remove tabs from the script
+    sed -i 's/^[[:space:]]*//' "/var/www/$domain_name/cgi/cgi_script.sh"
+
+
+    # Set permissions for the cgi script
+    chmod +x /var/www/$domain_name/cgi/cgi_script.sh | tee -a $LOGFILE
+
+    # Add cgi to the virtual host
+    sed -i '13i\
+        location /cgi {\n\
+            root /var/www/'$domain_name';\n\
+            fastcgi_pass unix:/var/run/fcgiwrap.socket;\n\
+            include /etc/nginx/fastcgi_params;\n\
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n\
+        }' /etc/nginx/sites-available/$domain_name | tee -a $LOGFILE
+
+    # Reload nginx service
+    systemctl restart nginx | tee -a $LOGFILE
+
+    # Set permissions for the web directory
+    chown -R www-data:www-data /var/www/$domain_name | tee -a $LOGFILE
+    chmod -R 755 /var/www/$domain_name | tee -a $LOGFILE
+
+    systemctl restart nginx | tee -a $LOGFILE
+    echo "CGI enabled." | tee -a $LOGFILE
+
+    ### Test with curl
+    echo
+    echo "Testing the virtual host with curl..." | tee -a $LOGFILE
+    curl http://$domain_name/cgi/cgi_script.sh | tee -a $LOGFILE
+    echo
+}
+
+################################# REMOVE NGINX ############################################
+# Remove nginx service
+function remove_nginx(){
+  if [ -x "$(command -v nginx)" ]; then
+    echo "Nginx installed. Uninstalling nginx service..." | tee -a $LOGFILE
+    apt remove nginx --purge -y | tee -a $LOGFILE
+    rm -rf /etc/nginx/sites-available/* | tee -a $LOGFILE
+    rm -rf /etc/nginx/sites-enabled/* | tee -a $LOGFILE
+    rm -rf /var/www/* | tee -a $LOGFILE
+    rm -rf /etc/nginx/.htpasswd | tee -a $LOGFILE
+    rm -rf /etc/pam.d/nginx | tee -a $LOGFILE
+    rm -rf /etc/nginx/.htpasswd | tee -a $LOGFILE
+    rm -rf $USER_HOME_DIR/public_html/index.html | tee -a $LOGFILE
+    echo
+    echo "Nginx uninstalled!" | tee -a $LOGFILE
+    echo
+  fi
+} 
 ################################################################ OPTIONS ###################################################################
 
 
 # Options to run the script
 if [ $# -eq 0 ]; then
-    echo "Please choose one of this options: $0 {--install | --create-virtual-host | --enable-user-dir | --setup-basic-auth | --setup-auth-pam | --remove}" | tee -a $LOGFILE
+    echo "Please choose one of this options: $0 {--install | --vhost | --userdir | --basic-auth | --pam-auth | --cgi | --remove}" | tee -a $LOGFILE
     exit 1
 fi
 
@@ -305,24 +375,27 @@ case "$1" in
     --install)
         install_nginx
         ;;
-    --create-virtual-host)
+    --vhost)
         create_virtual_host
         ;;
-    --enable-user-dir)
+    --user-dir)
         enable_user_dir
         ;;
-    --enable-basic-auth)
+    --basic-auth)
         enable_basic_auth
         ;;
-    --enable-auth-pam)
+    --pam-auth)
         enable_auth_pam
+        ;;
+    --cgi)
+        enable_cgi
         ;;
     --remove)
         remove_nginx
         ;;
 
     *)
-        echo "Please choose one of this options: $0 {--install | --create-virtual-host | --enable-user-dir | --setup-basic-auth | --setup-auth-pam | --remove}" | tee -a $LOGFILE
+       echo "Please choose one of this options: $0 {--install | --vhost | --userdir | --basic-auth | --pam-auth | --cgi | --remove}" | tee -a $LOGFILE
         exit 1
         ;;
 esac
