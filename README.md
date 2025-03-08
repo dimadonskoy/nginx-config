@@ -1,5 +1,7 @@
 # Nginx Configuration Tool
 
+![Nginx Logo](https://img.icons8.com/color/48/000000/nginx.png) ![Bash Logo](https://img.icons8.com/plasticine/100/000000/bash.png)
+
 This is a Bash script to automate the setup, configuration, and removal of Nginx virtual hosts, user directories, and authentication mechanisms. The script simplifies the process of managing Nginx on a server by offering options to install Nginx, create virtual hosts, enable user directories, and configure basic and PAM (Pluggable Authentication Modules) authentication.
 
 ## Features
@@ -21,17 +23,17 @@ This is a Bash script to automate the setup, configuration, and removal of Nginx
 1. Clone this repository or download the script file.
 2. Make the script executable:
 
-   ```bash
-   chmod +x nginx-configuration-tool.sh
+    ```bash
+    chmod +x nginx-configuration-tool.sh
+    ```
 
 ## Usage
 
-```markdown
-   Run the script with appropriate options:
+Run the script with appropriate options:
 
-    ```bash
-    sudo ./nginx-configuration-tool.sh [option]
-    ```
+```bash
+sudo ./nginx-configuration-tool.sh [option]
+```
 
 ### Options
 
@@ -73,4 +75,3 @@ This is a Bash script to automate the setup, configuration, and removal of Nginx
   ```bash
   sudo ./nginx-configuration-tool.sh --enable-pam-auth example.com
   ```
-```
