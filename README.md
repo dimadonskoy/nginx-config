@@ -12,7 +12,7 @@ This is a Bash script to automate the setup, configuration, and removal of Nginx
 - **Install Nginx**: Installs Nginx if not already installed.
 - **Remove Nginx**: Removes Nginx, configuration files, and associated directories.
 - **Create Virtual Host**: Creates a new virtual host configuration for a domain.
-- **Enable User Directory**: Configures the server to serve user-specific directories (e.g., `/home/username/public_html`).
+- **Enable User Directory**: Configures the server to serve user-specific directories.
 - **Enable Basic Authentication**: Configures basic HTTP authentication for a virtual host.
 - **Enable PAM Authentication**: Configures PAM authentication for a virtual host.
 
