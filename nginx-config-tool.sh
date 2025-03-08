@@ -229,14 +229,14 @@ EOF
     echo "Testing the virtual host with curl..." | tee -a $LOGFILE
     read -p "Enter the username : " auth_user
     read -p "Enter the password : " auth_pass
-    curl -u auth_user:auth_pass http://$domain_name/secure/ | tee -a $LOGFILE
+    curl -u $auth_user:$auth_pass http://$domain_name/secure/ | tee -a $LOGFILE
 
   }
 
 ################################  PAM AUTHENTICATION  ##############################################
 function enable_auth_pam() {
     echo "Setting up PAM authentication..." | tee -a $LOGFILE
-    apt install -y libpam0g-dev libpam-modules | tee -a $LOGFILE
+    apt install -y libpam0g-dev libpam-modules libnginx-mod-http-auth-pam | tee -a $LOGFILE
 
     read -p "Enter the domain name for the virtual host to enable PAM auth : " domain_name
 
@@ -245,6 +245,14 @@ function enable_auth_pam() {
         echo "Virtual host does not exist. Please create a virtual host first." | tee -a $LOGFILE
         exit 1    
     fi
+
+    # Create auth-pam directory and index.html if it does not exist
+    mkdir -p "/var/www/$domain_name/auth-pam" | tee -a $LOGFILE
+
+    # Create a sample index.html
+    cat > "/var/www/$domain_name/auth-pam/index.html" <<EOF
+    <H1>Welcome to nginx auth-pam_dir $domain_name server !</H1> 
+EOF
 
     ### add pam auth to the virtual host
     sed -i '13i\
@@ -266,7 +274,7 @@ function enable_auth_pam() {
     usermod -aG shadow www-data | tee -a $LOGFILE
 
     # Reload nginx service
-    systemctl reload nginx | tee -a $LOGFILE
+    systemctl restart nginx | tee -a $LOGFILE
 
     # Set permissions for the web directory
     chown -R www-data:www-data /var/www/$domain_name | tee -a $LOGFILE
@@ -279,7 +287,7 @@ function enable_auth_pam() {
     echo "Testing the virtual host with curl..." | tee -a $LOGFILE
     read -p "Enter the username : " auth_user
     read -p "Enter the password : " auth_pass
-    curl -u auth_user:auth_pass http://$domain_name/auth-pam/ | tee -a $LOGFILE
+    curl -u $auth_user:$auth_pass http://$domain_name/auth-pam/ | tee -a $LOGFILE
 }   
 
 
