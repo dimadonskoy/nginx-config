@@ -15,8 +15,6 @@ This is a Bash script to automate the setup, configuration, and removal of Nginx
 
 - A server running Ubuntu or Debian-based distribution.
 - Root privileges (sudo).
-- Nginx installed or ready to be installed.
-- `htpasswd` utility for basic authentication.
 
 ## Installation
 
@@ -29,7 +27,7 @@ This is a Bash script to automate the setup, configuration, and removal of Nginx
 ## Usage
 
 ```markdown
-3. Run the script with appropriate options:
+   Run the script with appropriate options:
 
     ```bash
     sudo ./nginx-configuration-tool.sh [option]
