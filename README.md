@@ -26,12 +26,12 @@ This is a Bash script to automate the setup, configuration, and removal of Nginx
 - Clone this repository or download the script file.
 
 ```
-    git clone https://github.com/dimadonskoy/nginx-config.git
+git clone https://github.com/dimadonskoy/nginx-config.git
 ```
 - Make the script executable:
 
 ```
-    chmod +x nginx-configuration-tool.sh
+chmod +x nginx-configuration-tool.sh
 ```
 
 ## Usage
@@ -42,7 +42,7 @@ Run the script with appropriate options:
 sudo ./nginx-config-tool.sh --[option]
 ```
 
-### Options
+## Options
 
 - `--install`: Installs Nginx.
 - `--remove`: Removes Nginx and its configurations.
