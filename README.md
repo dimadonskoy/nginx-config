@@ -1,8 +1,8 @@
 # Nginx Configuration Tool
 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/marwin1991/profile-technology-icons/refs/heads/main/icons/nginx.png" alt="Nginx" width="100" height="100">
-    <img src="https://raw.githubusercontent.com/marwin1991/profile-technology-icons/refs/heads/main/icons/bash.png" alt="Bash" width="100" height="100">
+    <img src="https://raw.githubusercontent.com/marwin1991/profile-technology-icons/refs/heads/main/icons/nginx.png" alt="Nginx" width="80" height="80">
+    <img src="https://raw.githubusercontent.com/marwin1991/profile-technology-icons/refs/heads/main/icons/bash.png" alt="Bash" width="80" height="80">
 </p>
 
 This is a Bash script to automate the setup, configuration, and removal of Nginx virtual hosts, user directories, and authentication mechanisms. The script simplifies the process of managing Nginx on a server by offering options to install Nginx, create virtual hosts, enable user directories, and configure basic and PAM (Pluggable Authentication Modules) authentication.
@@ -23,8 +23,8 @@ This is a Bash script to automate the setup, configuration, and removal of Nginx
 
 ## Installation
 
-1. Clone this repository or download the script file.
-2. Make the script executable:
+- Clone this repository or download the script file.
+- Make the script executable:
 
     ```
         chmod +x nginx-configuration-tool.sh
