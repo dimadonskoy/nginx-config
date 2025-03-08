@@ -55,22 +55,6 @@ function install_nginx(){
   fi
 } 
 
-# Remove nginx service
-function remove_nginx(){
-  if [ -x "$(command -v nginx)" ]; then
-      echo "Nginx installed. Uninstalling nginx service..." | tee -a $LOGFILE
-      sudo apt remove nginx --purge -y | tee -a $LOGFILE
-      rm -rf /etc/nginx/sites-available/* | tee -a $LOGFILE
-      rm -rf /etc/nginx/sites-enabled/* | tee -a $LOGFILE
-      rm -rf /var/www/* | tee -a $LOGFILE
-      rm -rf /etc/nginx/.htpasswd | tee -a $LOGFILE
-      rm -rf /var/log/nginx-tool | tee -a $LOGFILE
-      rm -rf $USER_HOME_DIR/public_html/index.html | tee -a $LOGFILE
-      echo "Nginx uninstalled!" | tee -a $LOGFILE
-  fi
-} 
-
-
 ######################################################################
 ### create a new virtual host with basic params
 function create_virtual_host(){
@@ -87,8 +71,8 @@ function create_virtual_host(){
 
     ### create site-directory
     mkdir -p /var/www/$domain_name | tee -a $LOGFILE
-    sudo chown -R $USERNAME:$USERNAME /var/www/$domain_name | tee -a $LOGFILE
-    sudo chmod -R 755 /var/www/$domain_name | tee -a $LOGFILE
+    chown -R $USERNAME:$USERNAME /var/www/$domain_name | tee -a $LOGFILE
+    chmod -R 755 /var/www/$domain_name | tee -a $LOGFILE
 
     ### create sample index.html
     cat > /var/www/$domain_name/index.html <<EOF
@@ -161,13 +145,13 @@ function enable_user_dir() {
     <H1>Welcome to nginx user_dir test server !</H1> 
 EOF
     ## Set permissions
-    sudo chown -R "$USERNAME:$USERNAME" "$USER_HOME_DIR/public_html" | tee -a $LOGFILE
-    sudo chmod 755 $USER_HOME_DIR/public_html | tee -a $LOGFILE
-    sudo chmod 644 $USER_HOME_DIR/public_html/index.html | tee -a $LOGFILE
+    chown -R "$USERNAME:$USERNAME" "$USER_HOME_DIR/public_html" | tee -a $LOGFILE
+    chmod 755 $USER_HOME_DIR/public_html | tee -a $LOGFILE
+    chmod 644 $USER_HOME_DIR/public_html/index.html | tee -a $LOGFILE
 
 
     # Add user_dir configuration to Nginx
-    sudo sed -i '13i\
+    sed -i '13i\
         location ~ ^/~(.+?)(/.*)?$ {\n\
             alias /home/\$1/public_html/$2;\n\
             index index.html index.htm;\n\
@@ -184,12 +168,29 @@ EOF
     curl http://$domain_name/~$USERNAME/ | tee -a $LOGFILE
 }
 
+# Remove nginx service
+function remove_nginx(){
+  if [ -x "$(command -v nginx)" ]; then
+      echo "Nginx installed. Uninstalling nginx service..." | tee -a $LOGFILE
+      apt remove nginx --purge -y | tee -a $LOGFILE
+      rm -rf /etc/nginx/sites-available/* | tee -a $LOGFILE
+      rm -rf /etc/nginx/sites-enabled/* | tee -a $LOGFILE
+      rm -rf /var/www/* | tee -a $LOGFILE
+      rm -rf /etc/nginx/.htpasswd | tee -a $LOGFILE
+      rm -rf /etc/pam.d/nginx | tee -a $LOGFILE
+      rm -rf /etc/nginx/.htpasswd | tee -a $LOGFILE
+      rm -rf $USER_HOME_DIR/public_html/index.html | tee -a $LOGFILE
+      echo "Nginx uninstalled!" | tee -a $LOGFILE
+  fi
+} 
+
 
 ##############################  BASIC AUTHENTICATION  #############################################
 function enable_basic_auth() {
     echo "Setting up basic authentication..." | tee -a $LOGFILE
-    sudo apt install -y apache2-utils nginx-extras | tee -a $LOGFILE
+    apt install -y apache2-utils nginx-extras | tee -a $LOGFILE
 
+    ### get the domain name
     read -p "Enter the domain name for the virtual host to enable basic auth : " domain_name
 
     ### check if virtual host already exists
@@ -199,12 +200,20 @@ function enable_basic_auth() {
     fi
 
     ## create a password file
-    echo "Enter the username :"
-    read username
+    read -p "Enter the username : " username
     htpasswd -c /etc/nginx/.htpasswd $username | tee -a $LOGFILE
 
+
+    # Create secure directory and index.html if it does not exist
+    mkdir -p "/var/www/$domain_name/secure" | tee -a $LOGFILE
+
+    # Create a sample index.html
+    cat > "/var/www/$domain_name/secure/index.html" <<EOF
+    <H1>Welcome to nginx secure_dir $domain_name server !</H1> 
+EOF
+
     ### add basic auth to the virtual host
-    sudo sed -i '13i\
+    sed -i '13i\
         location /secure {\n\
             auth_basic "Restricted Area";\n\
             auth_basic_user_file /etc/nginx/.htpasswd;\n\
@@ -214,7 +223,7 @@ function enable_basic_auth() {
     systemctl restart nginx | tee -a $LOGFILE
     
     echo "Basic authentication enabled !" | tee -a $LOGFILE
-    echo "You can access your secure website at http://$domain_name/secure" | tee -a $LOGFILE
+    echo "You can access your secure website at http://$domain_name/secure/" | tee -a $LOGFILE
 
     ### Test with curl
     echo "Testing the virtual host with curl..." | tee -a $LOGFILE
@@ -227,7 +236,7 @@ function enable_basic_auth() {
 ################################  PAM AUTHENTICATION  ##############################################
 function enable_auth_pam() {
     echo "Setting up PAM authentication..." | tee -a $LOGFILE
-    sudo apt install -y libpam0g-dev libpam-modules | tee -a $LOGFILE
+    apt install -y libpam0g-dev libpam-modules | tee -a $LOGFILE
 
     read -p "Enter the domain name for the virtual host to enable PAM auth : " domain_name
 
@@ -238,7 +247,7 @@ function enable_auth_pam() {
     fi
 
     ### add pam auth to the virtual host
-    sudo sed -i '13i\
+    sed -i '13i\
         location /auth-pam {\n\
             auth_pam "PAM Authentication";\n\
             auth_pam_service_name "nginx";\n\
@@ -254,16 +263,16 @@ function enable_auth_pam() {
     fi
 
     # Add nginx user to shadow group
-    sudo usermod -aG shadow www-data | tee -a $LOGFILE
+    usermod -aG shadow www-data | tee -a $LOGFILE
 
     # Reload nginx service
-    sudo systemctl reload nginx | tee -a $LOGFILE
+    systemctl reload nginx | tee -a $LOGFILE
 
     # Set permissions for the web directory
-    sudo chown -R www-data:www-data /var/www/$domain_name | tee -a $LOGFILE
-    sudo chmod -R 755 /var/www/$domain_name | tee -a $LOGFILE
+    chown -R www-data:www-data /var/www/$domain_name | tee -a $LOGFILE
+    chmod -R 755 /var/www/$domain_name | tee -a $LOGFILE
 
-    sudo systemctl restart nginx | tee -a $LOGFILE
+    systemctl restart nginx | tee -a $LOGFILE
     echo "PAM authentication enabled." | tee -a $LOGFILE
 
     ### Test with curl
