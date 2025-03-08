@@ -1,9 +1,9 @@
 # Nginx Configuration Tool
 
-![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange)
+<!-- ![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange)
 ![Bash](https://img.shields.io/badge/Bash-Scripts-green)
-![Nginx](https://img.shields.io/badge/Nginx-Server-blue)
-
+![Nginx](https://img.shields.io/badge/Nginx-Server-blue) -->
+![Nginx](https://raw.githubusercontent.com/marwin1991/profile-technology-icons/refs/heads/main/icons/nginx.png)
 
 This is a Bash script to automate the setup, configuration, and removal of Nginx virtual hosts, user directories, and authentication mechanisms. The script simplifies the process of managing Nginx on a server by offering options to install Nginx, create virtual hosts, enable user directories, and configure basic and PAM (Pluggable Authentication Modules) authentication.
 
