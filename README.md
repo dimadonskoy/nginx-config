@@ -19,15 +19,15 @@ This is a Bash script to automate the setup, configuration, and removal of Nginx
 ## Prerequisites
 
 - A server running Ubuntu or Debian-based distribution.
-- Root privileges (sudo).
+- Root or user that can run sudo .
 
 ## Installation
 
 1. Clone this repository or download the script file.
 2. Make the script executable:
 
-    ```bash
-    chmod +x nginx-configuration-tool.sh
+    ```
+        chmod +x nginx-configuration-tool.sh
     ```
 
 ## Usage
@@ -42,39 +42,12 @@ sudo ./nginx-configuration-tool.sh [option]
 
 - `--install`: Installs Nginx.
 - `--remove`: Removes Nginx and its configurations.
-- `--create-vhost <domain>`: Creates a virtual host for the specified domain.
-- `--enable-userdir <username>`: Enables user directory for the specified username.
-- `--enable-basic-auth <domain>`: Enables basic authentication for the specified domain.
-- `--enable-pam-auth <domain>`: Enables PAM authentication for the specified domain.
+- `--create-virtual-host`: Creates a virtual host for the specified domain.
+- `--enable-user-dir`: Enables user directory for the specified username.
+- `--enable-basic-auth`: Enables basic authentication for the specified domain.
+- `--enable-pam-auth`: Enables PAM authentication for the specified domain.
 
-### Examples
+## Author
 
-- To install Nginx:
-
-  ```bash
-  sudo ./nginx-configuration-tool.sh --install
-  ```
-
-- To create a virtual host for `example.com`:
-
-  ```bash
-  sudo ./nginx-configuration-tool.sh --create-vhost example.com
-  ```
-
-- To enable user directory for `john`:
-
-  ```bash
-  sudo ./nginx-configuration-tool.sh --enable-userdir john
-  ```
-
-- To enable basic authentication for `example.com`:
-
-  ```bash
-  sudo ./nginx-configuration-tool.sh --enable-basic-auth example.com
-  ```
-
-- To enable PAM authentication for `example.com`:
-
-  ```bash
-  sudo ./nginx-configuration-tool.sh --enable-pam-auth example.com
-  ```
+- Dmitri Donskoy
+- crooper22@gmail.com
