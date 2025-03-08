@@ -39,7 +39,7 @@ This is a Bash script to automate the setup, configuration, and removal of Nginx
 Run the script with appropriate options:
 
 ```bash
-sudo ./nginx-configuration-tool.sh [option]
+sudo ./nginx-config-tool.sh --[option]
 ```
 
 ### Options
