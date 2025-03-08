@@ -144,7 +144,7 @@ EOF
 
 }
 
-##################  USER DIRECTORY  ####################################
+########################################  USER DIRECTORY  #########################################
 function enable_user_dir() {
     read -p "Enter the domain name for the virtual host to enable user directory : " domain_name
 
@@ -185,7 +185,7 @@ EOF
 }
 
 
-##################  BASIC AUTHENTICATION  ####################################
+##############################  BASIC AUTHENTICATION  #############################################
 function enable_basic_auth() {
     echo "Setting up basic authentication..." | tee -a $LOGFILE
     sudo apt install -y apache2-utils nginx-extras | tee -a $LOGFILE
@@ -224,7 +224,7 @@ function enable_basic_auth() {
 
   }
 
-##################  PAM AUTHENTICATION  ####################################
+################################  PAM AUTHENTICATION  ##############################################
 function enable_auth_pam() {
     echo "Setting up PAM authentication..." | tee -a $LOGFILE
     sudo apt install -y libpam0g-dev libpam-modules | tee -a $LOGFILE
@@ -274,7 +274,7 @@ function enable_auth_pam() {
 }   
 
 
-########################################### OPTIONS ################################################
+################################################################ OPTIONS ###################################################################
 
 
 # Options to run the script

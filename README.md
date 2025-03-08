@@ -1,8 +1,5 @@
 # Nginx Configuration Tool
 
-<!-- ![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange)
-![Bash](https://img.shields.io/badge/Bash-Scripts-green)
-![Nginx](https://img.shields.io/badge/Nginx-Server-blue) -->
 <p align="center">
     <img src="https://raw.githubusercontent.com/marwin1991/profile-technology-icons/refs/heads/main/icons/nginx.png" alt="Nginx" width="100" height="100">
     <img src="https://raw.githubusercontent.com/marwin1991/profile-technology-icons/refs/heads/main/icons/bash.png" alt="Bash" width="100" height="100">
