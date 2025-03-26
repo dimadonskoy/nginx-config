@@ -61,76 +61,67 @@ function install_nginx(){
 ### create a new virtual host with basic params
 function create_virtual_host(){
     ### get the domain name
-    read -p "Enter the domain name for the new virtual host : " domain_name
+    read -p "Enter the domain name for the new virtual host: " domain_name
 
     ### check if virtual host already exists
-    if [ -e /etc/nginx/sites-enabled/$domain_name ]; then
-        echo "Virtual host already exists. Exiting..." | tee -a $LOGFILE
+    if [ -e /etc/nginx/sites-available/$domain_name ] || [ -e /etc/nginx/sites-enabled/$domain_name ]; then
+        echo "Virtual host already exists. Exiting..." | tee -a "$LOGFILE"
         exit 1
     fi
 
-    echo "Creating new virtual host..." | tee -a $LOGFILE
+    echo "Creating new virtual host..." | tee -a "$LOGFILE"
 
     ### create site-directory
-    mkdir -p /var/www/$domain_name | tee -a $LOGFILE
-    chown -R $USERNAME:$USERNAME /var/www/$domain_name | tee -a $LOGFILE
-    chmod -R 755 /var/www/$domain_name | tee -a $LOGFILE
+    mkdir -p "/var/www/$domain_name"
+    chown -R "$USERNAME:$USERNAME" "/var/www/$domain_name"
+    chmod -R 755 "/var/www/$domain_name"
 
     ### create sample index.html
-    cat > /var/www/$domain_name/index.html <<EOF
-    <H1>Welcome to $domain_name new virtual host</H1> 
-EOF
+    echo "<h1>Welcome to $domain_name new virtual host</h1>" > "/var/www/$domain_name/index.html"
 
-    ### create a new virtual host from template
-    cat > /etc/nginx/sites-available/$domain_name <<EOF
-    server {
-        listen 80;
-        listen [::]:80;
+    ### Define template and output file
+    template_file="./templates/vhost_template.conf"
+    output_file="/etc/nginx/sites-available/$domain_name"
 
-        root /var/www/$domain_name;
-        index index.html index.htm index.nginx-debian.html;
-
-        server_name $domain_name www.$domain_name;
-
-        location / {
-            try_files \$uri \$uri/ =404;
-        }
-    }
-EOF
-
-    ### remove default virtual host from sites-enabled if exists
-    if [ -e /etc/nginx/sites-enabled/default ]; then
-        rm /etc/nginx/sites-enabled/default | tee -a $LOGFILE
-    fi
-
-    ### check if virtual host already exists , if exist then exit
-    if [ -e /etc/nginx/sites-enabled/$domain_name ]; then
-        echo "Virtual host already exists. Exiting..." | tee -a $LOGFILE
+    ### Ensure template exists before proceeding
+    if [ ! -s "$template_file" ]; then
+        echo "Error: Template file $template_file is missing or empty!" | tee -a "$LOGFILE"
         exit 1
     fi
 
-    ### Create link to the site directory and set permissions
-    ln -s /etc/nginx/sites-available/$domain_name /etc/nginx/sites-enabled/ | tee -a $LOGFILE
-    chown -R $USERNAME:$USERNAME /etc/nginx/sites-available/$domain_name | tee -a $LOGFILE
-    chmod -R 755 /etc/nginx/sites-available/$domain_name | tee -a $LOGFILE
+    ### Replace domain placeholder in template and create virtual host config
+    sed "s/__DOMAIN_NAME__/$domain_name/g" "$template_file" > "$output_file"
 
+    ### Remove default virtual host if it exists
+    if [ -e /etc/nginx/sites-enabled/default ]; then
+        rm /etc/nginx/sites-enabled/default
+    fi
 
-    ### Add new virtual host to /etc/hosts
-    echo "127.0.0.1 $domain_name" >> /etc/hosts | tee -a $LOGFILE
+    ### Create symlink and set permissions
+    ln -s "$output_file" "/etc/nginx/sites-enabled/"
+    chown -R "$USERNAME:$USERNAME" "$output_file"
+    chmod -R 755 "$output_file"
 
-    ### restart nginx
-    systemctl restart nginx | tee -a $LOGFILE
+    ### Add domain to /etc/hosts if not already present
+    if ! grep -q "$domain_name" /etc/hosts; then
+        echo "127.0.0.1 $domain_name" >> /etc/hosts
+    fi
 
-    echo "Virtual host created!" | tee -a $LOGFILE
-    echo "You can access your website at http://$domain_name" | tee -a $LOGFILE
+    ### Test Nginx configuration before restarting
+    if nginx -t; then
+        systemctl restart nginx
+        echo "Virtual host created successfully!" | tee -a "$LOGFILE"
+        echo "You can access your website at http://$domain_name" | tee -a "$LOGFILE"
 
-    ### Test with curl
-    echo
-    echo "Testing the virtual host with curl..." | tee -a $LOGFILE
-    curl http://$domain_name | tee -a $LOGFILE
-    echo
-
+        ### Test with curl
+        echo "Testing the virtual host with curl..." | tee -a "$LOGFILE"
+        curl -s "http://$domain_name" | tee -a "$LOGFILE"
+    else
+        echo "Nginx configuration test failed! Check the logs." | tee -a "$LOGFILE"
+        exit 1
+    fi
 }
+
 
 ########################################  USER DIRECTORY  #########################################
 function enable_user_dir() {
@@ -150,29 +141,38 @@ function enable_user_dir() {
 EOF
     ## Set permissions
     chown -R "$USERNAME:$USERNAME" "$USER_HOME_DIR/public_html" | tee -a $LOGFILE
+    chmod o+x $USER_HOME_DIR | tee -a $LOGFILE 
     chmod 755 $USER_HOME_DIR/public_html | tee -a $LOGFILE
     chmod 644 $USER_HOME_DIR/public_html/index.html | tee -a $LOGFILE
 
 
-    # Add user_dir configuration to Nginx
-    sed -i '13i\
-        location ~ ^/~(.+?)(/.*)?$ {\n\
-            alias /home/\$1/public_html/$2;\n\
-            index index.html index.htm;\n\
-        }' "/etc/nginx/sites-available/$domain_name" | tee -a $LOGFILE
+    ### Define template and output file
+    template_file="./templates/user_dir.conf"
+    output_file="/etc/nginx/sites-available/$domain_name"
 
-    # Restart Nginx
-    systemctl restart nginx | tee -a $LOGFILE
-    echo
-    echo "Virtual host configured!" | tee -a $LOGFILE
-    echo
-    echo "You can access your website at http://$domain_name/~$USERNAME" | tee -a $LOGFILE
+    ### Ensure template exists before proceeding
+    if [ ! -s "$template_file" ]; then
+        echo "Error: Template file $template_file is missing or empty!" | tee -a "$LOGFILE"
+        exit 1
+    fi
 
-    ### Test with curl
-    echo
-    echo "Testing the virtual host user_dir with curl..." | tee -a $LOGFILE
-    curl http://$domain_name/~$USERNAME/ | tee -a $LOGFILE
-    echo
+    ### Replace domain placeholder in template and create virtual host config
+    sed "s/__DOMAIN_NAME__/$domain_name/g" "$template_file" > "$output_file"
+
+
+    ### Test Nginx configuration before restarting
+    if nginx -t; then
+        systemctl restart nginx
+        echo "Virtual host created successfully!" | tee -a "$LOGFILE"
+        echo "You can access your website at http://$domain_name" | tee -a "$LOGFILE"
+
+        echo "Testing the virtual host user_dir with curl..." | tee -a $LOGFILE
+        curl http://$domain_name/~$USERNAME/ | tee -a $LOGFILE
+        echo
+    else
+        echo "Nginx configuration test failed! Check the logs." | tee -a "$LOGFILE"
+        exit 1
+    fi
 }
 
 ##############################  BASIC AUTHENTICATION  #############################################
@@ -202,26 +202,36 @@ function enable_basic_auth() {
     <H1>Welcome to nginx secure_dir $domain_name server !</H1> 
 EOF
 
-    ### add basic auth to the virtual host
-    sed -i '13i\
-        location /secure {\n\
-            auth_basic "Restricted Area";\n\
-            auth_basic_user_file /etc/nginx/.htpasswd;\n\
-          }' /etc/nginx/sites-available/$domain_name | tee -a $LOGFILE
+    ### Define template and output file
+    template_file="./templates/basic_auth.conf"
+    output_file="/etc/nginx/sites-available/$domain_name"
 
-    ### restart nginx
-    systemctl restart nginx | tee -a $LOGFILE
-    
-    echo "Basic authentication enabled !" | tee -a $LOGFILE
-    echo "You can access your secure website at http://$domain_name/secure/" | tee -a $LOGFILE
+    ### Ensure template exists before proceeding
+    if [ ! -s "$template_file" ]; then
+        echo "Error: Template file $template_file is missing or empty!" | tee -a "$LOGFILE"
+        exit 1
+    fi
 
-    ### Test with curl
-    echo
-    echo "Testing the virtual host with curl..." | tee -a $LOGFILE
-    read -p "Enter the username : " auth_user
-    read -p "Enter the password : " auth_pass
-    curl -u $auth_user:$auth_pass http://$domain_name/secure/ | tee -a $LOGFILE
-    echo
+    ### Replace domain placeholder in template and create virtual host config
+    sed "s/__DOMAIN_NAME__/$domain_name/g" "$template_file" > "$output_file"
+ 
+    ### Test Nginx configuration before restarting
+    if nginx -t; then
+        systemctl restart nginx
+        echo "Virtual host created successfully!" | tee -a "$LOGFILE"
+
+        ### Test with curl
+        echo
+        echo "Testing the virtual host with curl..." | tee -a $LOGFILE
+        read -p "Enter the username : " auth_user
+        read -p "Enter the password : " auth_pass
+        curl -u $auth_user:$auth_pass http://$domain_name/secure/ | tee -a $LOGFILE
+        echo
+    else
+        echo "Nginx configuration test failed! Check the logs." | tee -a "$LOGFILE"
+        exit 1
+    fi
+
   }
 
 ################################  PAM AUTHENTICATION  ##############################################
@@ -246,12 +256,24 @@ function enable_auth_pam() {
 EOF
 
     ### add pam auth to the virtual host
-    sed -i '13i\
-        location /auth-pam {\n\
-            auth_pam "PAM Authentication";\n\
-            auth_pam_service_name "nginx";\n\
-          }' /etc/nginx/sites-available/$domain_name | tee -a $LOGFILE
+    # sed -i '13i\
+    #     location /auth-pam {\n\
+    #         auth_pam "PAM Authentication";\n\
+    #         auth_pam_service_name "nginx";\n\
+    #       }' /etc/nginx/sites-available/$domain_name | tee -a $LOGFILE
 
+    ### Define template and output file
+    template_file="./templates/pam_auth.conf"
+    output_file="/etc/nginx/sites-available/$domain_name"
+
+    ### Ensure template exists before proceeding
+    if [ ! -s "$template_file" ]; then
+        echo "Error: Template file $template_file is missing or empty!" | tee -a "$LOGFILE"
+        exit 1
+    fi
+
+    ### Replace domain placeholder in template and create virtual host config
+    sed "s/__DOMAIN_NAME__/$domain_name/g" "$template_file" > "$output_file"
 
     # Define the PAM configuration file for nginx
     PAM_FILE="/etc/pam.d/nginx"
@@ -274,6 +296,12 @@ EOF
     systemctl restart nginx | tee -a $LOGFILE
     echo "PAM authentication enabled." | tee -a $LOGFILE
 
+
+    ### Test Nginx configuration before restarting
+    if nginx -t; then
+        systemctl restart nginx
+        echo "Virtual host created successfully!" | tee -a "$LOGFILE"
+
     ### Test with curl
     echo
     echo "Testing the virtual host with curl..." | tee -a $LOGFILE
@@ -281,6 +309,11 @@ EOF
     read -p "Enter the password : " auth_pass
     curl -u $auth_user:$auth_pass http://$domain_name/auth-pam/ | tee -a $LOGFILE
     echo
+
+    else
+        echo "Nginx configuration test failed! Check the logs." | tee -a "$LOGFILE"
+        exit 1
+    fi
 }   
 
 function enable_cgi(){
@@ -299,32 +332,37 @@ function enable_cgi(){
     mkdir -p "/var/www/$domain_name/cgi" | tee -a $LOGFILE
 
     # Create a sample cgi script
-    cat > "/var/www/$domain_name/cgi/cgi_script.sh" <<EOF
-    #!/usr/bin/env bash
-    echo "Content-type: text/html"
-    echo ""
-    echo "<html>"
-    echo "<head><title>CGI Script</title></head>"
-    echo "<body>"
-    echo "<h1>Welcome to nginx CGI $domain_name server!</h1>"
-    echo "</body>"
-    echo "</html>"
-EOF
-    # Remove tabs from the script
-    sed -i 's/^[[:space:]]*//' "/var/www/$domain_name/cgi/cgi_script.sh"
+    ### Define template and output file
+    template_file="./templates/cgi_script.sh"
+    output_file="/var/www/$domain_name/cgi/cgi_script.sh"
+
+    ### Ensure template exists before proceeding
+    if [ ! -s "$template_file" ]; then
+        echo "Error: Template file $template_file is missing or empty!" | tee -a "$LOGFILE"
+        exit 1
+    fi
+
+    ### Replace domain placeholder in template and create virtual host config
+    sed "s/__DOMAIN_NAME__/$domain_name/g" "$template_file" > "$output_file"
+
+
+    # Create virtualhost cgi
+    ### Define template and output file
+    template_file="./templates/cgi.conf"
+    output_file="/etc/nginx/sites-available/$domain_name"
+
+    ### Ensure template exists before proceeding
+    if [ ! -s "$template_file" ]; then
+        echo "Error: Template file $template_file is missing or empty!" | tee -a "$LOGFILE"
+        exit 1
+    fi
+
+    ### Replace domain placeholder in template and create virtual host config
+    sed "s/__DOMAIN_NAME__/$domain_name/g" "$template_file" > "$output_file"
 
 
     # Set permissions for the cgi script
     chmod +x /var/www/$domain_name/cgi/cgi_script.sh | tee -a $LOGFILE
-
-    # Add cgi to the virtual host
-    sed -i '13i\
-        location /cgi {\n\
-            root /var/www/'$domain_name';\n\
-            fastcgi_pass unix:/var/run/fcgiwrap.socket;\n\
-            include /etc/nginx/fastcgi_params;\n\
-            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n\
-        }' /etc/nginx/sites-available/$domain_name | tee -a $LOGFILE
 
     # Reload nginx service
     systemctl restart nginx | tee -a $LOGFILE
@@ -366,7 +404,7 @@ function remove_nginx(){
 
 # Options to run the script
 if [ $# -eq 0 ]; then
-    echo "Please choose one of this options: $0 {--install | --vhost | --userdir | --basic-auth | --pam-auth | --cgi | --remove}" | tee -a $LOGFILE
+    echo "Please choose one of this options: $0 {--install | --vhost | --user-dir | --basic-auth | --pam-auth | --cgi | --remove}" | tee -a $LOGFILE
     exit 1
 fi
 
@@ -395,7 +433,7 @@ case "$1" in
         ;;
 
     *)
-       echo "Please choose one of this options: $0 {--install | --vhost | --userdir | --basic-auth | --pam-auth | --cgi | --remove}" | tee -a $LOGFILE
+       echo "Please choose one of this options: $0 {--install | --vhost | --user-dir | --basic-auth | --pam-auth | --cgi | --remove}" | tee -a $LOGFILE
         exit 1
         ;;
 esac
