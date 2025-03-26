@@ -44,6 +44,18 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 
+# Check if OS is Ubuntu or debian based 
+
+source /etc/os-release
+
+if [[ "$ID" == "ubuntu" || "$ID_LIKE" == *"debian"* ]]; then
+    echo "This is an Ubuntu or Debian-based system."
+else
+    echo "This is NOT Ubuntu or Debian. Exiting..."
+    exit 1
+fi
+
+
 # Install nginx service
 function install_nginx(){
   if [ -x "$(command -v nginx)" ]; then
