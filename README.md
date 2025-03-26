@@ -48,7 +48,7 @@ sudo ./nginx-config-tool.sh --[option]
 - `--install`: Installs Nginx.
 - `--remove`: Removes Nginx and its configurations.
 - `--vhost`: Creates a virtual host for the specified domain.
-- `--userdir`: Enables user directory for the specified username.
+- `--user-dir`: Enables user directory for the specified username.
 - `--basic-auth`: Enables basic authentication for the specified domain.
 - `--pam-auth`: Enables PAM authentication for the specified domain.
 - `--cgi`: Enables CGI module to run scripts .
