@@ -12,7 +12,7 @@
 
 #Developed by : Dmitri Donskoy
 #Purpose : Nginx configuration tool 
-#Date : 08.03.2025
+#Update date : 26.03.2025
 #Version : 0.0.1
 # set -x
 set -o errexit
