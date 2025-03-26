@@ -136,9 +136,8 @@ function enable_user_dir() {
     mkdir -p "$USER_HOME_DIR/public_html" | tee -a $LOGFILE
 
     # Create a sample index.html
-    cat > "$USER_HOME_DIR/public_html/index.html" <<EOF
-    <H1>Welcome to nginx user_dir test server !</H1> 
-EOF
+    echo "<H1>Welcome to nginx user_dir test server !</H1>" > "$USER_HOME_DIR/public_html/index.html"
+
     ## Set permissions
     chown -R "$USERNAME:$USERNAME" "$USER_HOME_DIR/public_html" | tee -a $LOGFILE
     chmod o+x $USER_HOME_DIR | tee -a $LOGFILE 
@@ -198,9 +197,7 @@ function enable_basic_auth() {
     mkdir -p "/var/www/$domain_name/secure" | tee -a $LOGFILE
 
     # Create a sample index.html
-    cat > "/var/www/$domain_name/secure/index.html" <<EOF
-    <H1>Welcome to nginx secure_dir $domain_name server !</H1> 
-EOF
+    echo "<H1>Welcome to nginx $domain_name server !</H1>" > "/var/www/$domain_name/secure/index.html"
 
     ### Define template and output file
     template_file="./templates/basic_auth.conf"
@@ -251,16 +248,7 @@ function enable_auth_pam() {
     mkdir -p "/var/www/$domain_name/auth-pam" | tee -a $LOGFILE
 
     # Create a sample index.html
-    cat > "/var/www/$domain_name/auth-pam/index.html" <<EOF
-    <H1>Welcome to nginx auth-pam_dir $domain_name server !</H1> 
-EOF
-
-    ### add pam auth to the virtual host
-    # sed -i '13i\
-    #     location /auth-pam {\n\
-    #         auth_pam "PAM Authentication";\n\
-    #         auth_pam_service_name "nginx";\n\
-    #       }' /etc/nginx/sites-available/$domain_name | tee -a $LOGFILE
+    echo "<H1>Welcome to nginx auth-pam_dir $domain_name server !</H1>" > "/var/www/$domain_name/auth-pam/index.html"
 
     ### Define template and output file
     template_file="./templates/pam_auth.conf"
