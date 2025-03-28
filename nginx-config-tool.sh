@@ -22,8 +22,12 @@ set -o pipefail
 
 ############################ GLOBAL VARS ##############################
 # Get the home directory of the current user who run sudo .
-USER_HOME_DIR=$(eval echo ~$SUDO_USER)  
-# Get the username of the current user who run sudo .
+if [ -z "${SUDO_USER:-}" ]; then
+    USER_HOME_DIR=$(eval echo ~$USER)
+else
+    USER_HOME_DIR=$(eval echo ~$SUDO_USER)
+fi
+# Get the username of the current user who run sudo or fallback to the current user.
 USERNAME=$(basename $USER_HOME_DIR)
 
 #######################################################################
@@ -37,10 +41,10 @@ fi
 ## Log file
 LOGFILE=/var/log/nginx-tool/nginx_tool.log
 
-
 # Check if user is root
 if [ "$EUID" -ne 0 ]; then
-    echo "Please run as root" 
+    echo "Please run as root"
+    echo
 fi
 
 
@@ -49,7 +53,7 @@ fi
 source /etc/os-release
 
 if [[ "$ID" == "ubuntu" || "$ID_LIKE" == *"debian"* ]]; then
-    echo "This is an Ubuntu or Debian-based system."
+    echo
 else
     echo "This is NOT Ubuntu or Debian. Exiting..."
     exit 1
